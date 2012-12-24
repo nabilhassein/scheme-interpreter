@@ -1,7 +1,8 @@
+import Control.Monad
 import Data.Char (digitToInt)
-import System.Environment (getArgs)
-import Text.ParserCombinators.Parsec
-import Numeric (readInt, readOct, readDec, readHex)
+import System.Environment
+import Text.ParserCombinators.Parsec hiding (spaces)
+import Numeric
 
 
 data LispVal = Atom String
@@ -44,7 +45,6 @@ parseBool = do
 parseChar :: Parser LispVal
 parseChar = undefined
 
-
 escapedChar :: Parser Char
 escapedChar = do
   char '\\'
@@ -61,7 +61,6 @@ parseString = do
   x <- many $ escapedChar <|> noneOf "\"\\"
   char '"'
   return $ String x
-
 
 parseAtom :: Parser LispVal
 parseAtom = do
