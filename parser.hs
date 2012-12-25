@@ -253,13 +253,20 @@ parseExpr = try parseBoolean <|>
             try parseDottedList <|>
             try parseVector
 
-readExpr :: String -> String
+readExpr :: String -> LispVal
 readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right val -> "Found value: " ++ show val
+  Left err -> String $ "No match: " ++ show err
+  Right val -> val
 
+eval :: LispVal -> LispVal
+eval val@(Number _)             = val
+eval val@(Complex _)            = val
+eval val@(Real _)               = val
+eval val@(Ratio _)              = val
+eval val@(String _)             = val
+eval val@(Character _)          = val
+eval val@(Boolean _)            = val
+eval (List [Atom "quote", val]) = val
 
 main :: IO ()
-main = do
-  args <- getArgs
-  putStrLn . readExpr $ args !! 0
+main = getArgs >>= print . eval . readExpr . head
