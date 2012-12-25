@@ -1,4 +1,4 @@
-module Parser where
+module Main where
 
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment (getArgs)
@@ -267,6 +267,33 @@ eval val@(String _)             = val
 eval val@(Character _)          = val
 eval val@(Boolean _)            = val
 eval (List [Atom "quote", val]) = val
+eval (List (Atom f : args))     = apply f $ map eval args
+
+apply :: String -> [LispVal] -> LispVal
+apply f args = maybe (Boolean False) ($ args) (lookup f primitives)
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives = [("+"         , numericBinOp (+))
+             , ("-"        , numericBinOp (-))
+             , ("*"        , numericBinOp (*))
+             , ("/"        , numericBinOp div)
+             , ("mod"      , numericBinOp mod)
+             , ("quotient" , numericBinOp quot)
+             , ("remainder", numericBinOp rem)
+             ]
+
+numericBinOp :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
+numericBinOp op params = Number $ foldl1 op $ map unpackNum params
+
+unpackNum :: LispVal -> Integer
+unpackNum (Number n) = n
+unpackNum (String n) = let parsed = reads n
+                       in if null parsed
+                          then 0
+                          else fst . head $ parsed
+unpackNum (List [n]) = unpackNum n
+unpackNum _          = 0
+
 
 main :: IO ()
 main = getArgs >>= print . eval . readExpr . head
