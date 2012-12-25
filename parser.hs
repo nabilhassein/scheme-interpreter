@@ -1,21 +1,22 @@
-import Control.Monad
-import Data.Char (digitToInt)
-import System.Environment
-import Text.ParserCombinators.Parsec hiding (spaces)
-import Numeric
+import Text.ParserCombinators.Parsec
+import System.Environment (getArgs)
 import Data.Maybe (fromJust)
+import Data.Char (digitToInt)
+import Data.Ratio
+import Data.Complex
+import Numeric
 
 
-data LispVal = Atom String
-             | List [LispVal]
+data LispVal = List [LispVal]
              | DottedList [LispVal] LispVal
              | Number Integer
-             | String String
-             | Bool Bool
-             | Char Char
-             | Float Double
+             | Complex (Complex Double)
+             | Real Double
              | Rational Rational
-             | Complex (Double, Double)
+             | String String
+             | Character Char
+             | Boolean Bool
+             | Atom String
              deriving Show
 
 -- parseRational :: Parser LispVal
@@ -24,21 +25,21 @@ data LispVal = Atom String
   
 
 
-parseBool :: Parser LispVal
-parseBool = do
+parseBoolean :: Parser LispVal
+parseBoolean = do
   char '#'
   x <- oneOf "tf"
   return $ case x of
-    't' -> Bool True
-    'f' -> Bool False
+    't' -> Boolean True
+    'f' -> Boolean False
 
 
-parseFloat :: Parser LispVal
-parseFloat = do
+parseReal :: Parser LispVal
+parseReal = do
   i <- many1 digit
   char '.'
   f <- many1 digit
-  return . Float . fst . head . readFloat $ i ++ "." ++ f
+  return . Real . fst . head . readFloat $ i ++ "." ++ f
 
 
 parseNumber :: Parser LispVal
@@ -98,12 +99,12 @@ parseNamedChar :: Parser LispVal
 parseNamedChar = do
   string "#\\"
   x <- foldr1 (<|>) (tryAll characterNames)
-  return . Char . fromJust $ lookup x characterNames
+  return . Character . fromJust $ lookup x characterNames
 
 parseChar :: Parser LispVal
 parseChar = do
   string "#\\"
-  anyChar >>= return . Char
+  anyChar >>= return . Character
 
 
 escapedChar :: Parser Char
@@ -135,8 +136,8 @@ parseString = do
 
 
 parseExpr :: Parser LispVal
-parseExpr = try parseBool <|>
-            try parseFloat <|> 
+parseExpr = try parseBoolean <|>
+            try parseReal <|> 
             try parseNumber <|>
             try parseNamedChar <|>
             try parseChar <|>
