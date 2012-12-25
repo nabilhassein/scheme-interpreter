@@ -280,18 +280,50 @@ primitives = [("+"         , numericBinOp (+))
              , ("mod"      , numericBinOp mod)
              , ("quotient" , numericBinOp quot)
              , ("remainder", numericBinOp rem)
+             , ("boolean?" , unaryOp booleanp)
+             , ("string?"  , unaryOp stringp)
+             , ("number?"  , unaryOp numberp)
+             , ("symbol?"  , unaryOp symbolp)
+             , ("list?"    , unaryOp listp)
+             , ("symbol->string", unaryOp symbolToString)
+             , ("string->symbol", unaryOp stringToSymbol)
              ]
+
+unaryOp :: (LispVal -> LispVal) -> [LispVal] -> LispVal
+unaryOp f [v] = f v
+
+symbolToString :: LispVal -> LispVal
+symbolToString (Atom s) = String s
+
+stringToSymbol :: LispVal -> LispVal
+stringToSymbol (String s) = Atom s
+
+booleanp, stringp, numberp, symbolp, listp :: LispVal -> LispVal
+booleanp (Boolean _) = Boolean True
+booleanp  _          = Boolean False
+
+stringp (String _)   = Boolean True
+stringp _            = Boolean False
+
+numberp (Number _)   = Boolean True
+numberp (Complex _)  = Boolean True
+numberp (Real _)     = Boolean True
+numberp (Ratio _)    = Boolean True
+numberp  _           = Boolean False
+
+symbolp (Atom _)     = Boolean True
+symbolp  _           = Boolean False
+
+listp (List _)       = Boolean True
+listp (DottedList _ _) = Boolean True
+listp  _             = Boolean False
 
 numericBinOp :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinOp op params = Number $ foldl1 op $ map unpackNum params
 
+--TODO: complex, real, ratio
 unpackNum :: LispVal -> Integer
 unpackNum (Number n) = n
-unpackNum (String n) = let parsed = reads n
-                       in if null parsed
-                          then 0
-                          else fst . head $ parsed
-unpackNum (List [n]) = unpackNum n
 unpackNum _          = 0
 
 
