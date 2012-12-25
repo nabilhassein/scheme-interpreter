@@ -9,7 +9,7 @@ import Numeric
 
 data LispVal = List [LispVal]
              | DottedList [LispVal] LispVal
-             | Vector [LispVal]
+             | Vector (Int, [LispVal])
              | Number Integer
              | Complex (Complex Double)
              | Real Double
@@ -211,9 +211,9 @@ parseVector :: Parser LispVal
 parseVector = do
   char '#'
   char '('
-  x <- parseExpr
+  x <- sepBy parseExpr spaces
   char ')'
-  return $ Vector [x]
+  return $ Vector (length x, x)
 
 
 parseExpr :: Parser LispVal
@@ -229,7 +229,8 @@ parseExpr = try parseBoolean <|>
             try parseUnquote <|>
             try parseQuasiquote <|>
             try parseList <|>
-            parseDottedList
+            try parseDottedList <|>
+            try parseVector
 
 readExpr :: String -> String
 readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
