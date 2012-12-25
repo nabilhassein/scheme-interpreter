@@ -14,7 +14,14 @@ data LispVal = Atom String
              | Bool Bool
              | Char Char
              | Float Double
+             | Rational Rational
+             | Complex (Double, Double)
              deriving Show
+
+-- parseRational :: Parser LispVal
+-- parseRational = do
+  
+  
 
 
 parseBool :: Parser LispVal
@@ -26,64 +33,12 @@ parseBool = do
     'f' -> Bool False
 
 
-characterNames :: [(String, Char)]
-characterNames = [ ("nul", '\NUL')
-                 , ("alarm", '\BEL')
-                 , ("backspace", '\BS')
-                 , ("tab", '\t')
-                 , ("linefeed", '\n')
-                 , ("newline", '\n')
-                 , ("vtab", '\v')
-                 , ("page", '\f')
-                 , ("return", '\CR')
-                 , ("esc", '\ESC')
-                 , ("space", ' ')
-                 , ("delete", '\DEL')
-                 ]
-
-tryAll :: [(String, Char)] -> [GenParser Char st String]
-tryAll xs = [try (string s) | s <- strings xs]
-  where strings :: [(String, Char)] -> [String]
-        strings = map fst 
-
-parseNamedChar :: Parser LispVal
-parseNamedChar = do
-  string "#\\"
-  x <- foldr1 (<|>) (tryAll characterNames)
-  return . Char . fromJust $ lookup x characterNames
-
-parseChar :: Parser LispVal
-parseChar = do
-  string "#\\"
-  (letter <|> digit) >>= return . Char
-
-
-escapedChar :: Parser Char
-escapedChar = do
-  char '\\'
-  x <- oneOf "\"\\nrt"
-  return $ case x of
-    'n' -> '\n'
-    'r' -> '\r'
-    't' -> '\t'
-    _   -> x   -- literal quote or backslash
-
-parseString :: Parser LispVal
-parseString = do
-  char '"'
-  x <- many $ escapedChar <|> noneOf "\"\\"
-  char '"'
-  return $ String x
-
-
-symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=>?@^_~"
-
-parseAtom :: Parser LispVal
-parseAtom = do
-  first <- letter <|> symbol
-  rest <- many $ letter <|> digit <|> symbol
-  return . Atom $ first:rest
+parseFloat :: Parser LispVal
+parseFloat = do
+  i <- many1 digit
+  char '.'
+  f <- many1 digit
+  return . Float . fst . head . readFloat $ i ++ "." ++ f
 
 
 parseNumber :: Parser LispVal
@@ -119,12 +74,64 @@ parseHex = do
   return . Number . fst . head . readHex $ x
 
 
-parseFloat :: Parser LispVal
-parseFloat = do
-  i <- many1 digit
-  char '.'
-  f <- many1 digit
-  return . Float . fst . head . readFloat $ i ++ "." ++ f
+characterNames :: [(String, Char)]
+characterNames = [ ("nul", '\NUL')
+                 , ("alarm", '\BEL')
+                 , ("backspace", '\BS')
+                 , ("tab", '\t')
+                 , ("linefeed", '\n')
+                 , ("newline", '\n')
+                 , ("vtab", '\v')
+                 , ("page", '\f')
+                 , ("return", '\CR')
+                 , ("esc", '\ESC')
+                 , ("space", ' ')
+                 , ("delete", '\DEL')
+                 ]
+
+tryAll :: [(String, Char)] -> [GenParser Char st String]
+tryAll xs = [try (string s) | s <- strings xs]
+  where strings :: [(String, Char)] -> [String]
+        strings = map fst 
+
+parseNamedChar :: Parser LispVal
+parseNamedChar = do
+  string "#\\"
+  x <- foldr1 (<|>) (tryAll characterNames)
+  return . Char . fromJust $ lookup x characterNames
+
+parseChar :: Parser LispVal
+parseChar = do
+  string "#\\"
+  anyChar >>= return . Char
+
+
+escapedChar :: Parser Char
+escapedChar = do
+  char '\\'
+  x <- oneOf "\"\\nrt"
+  return $ case x of
+    'n' -> '\n'
+    'r' -> '\r'
+    't' -> '\t'
+    _   -> x   -- literal quote or backslash
+
+symbol :: Parser Char
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
+
+parseAtom :: Parser LispVal
+parseAtom = do
+  first <- letter <|> symbol
+  rest <- many $ letter <|> digit <|> symbol
+  return . Atom $ first:rest
+
+
+parseString :: Parser LispVal
+parseString = do
+  char '"'
+  x <- many $ escapedChar <|> noneOf "\"\\"
+  char '"'
+  return $ String x
 
 
 parseExpr :: Parser LispVal
