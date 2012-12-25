@@ -12,18 +12,35 @@ data LispVal = List [LispVal]
              | Number Integer
              | Complex (Complex Double)
              | Real Double
-             | Rational Rational
+             | Ratio Rational
              | String String
              | Character Char
              | Boolean Bool
              | Atom String
              deriving Show
 
--- parseRational :: Parser LispVal
--- parseRational = do
-  
+parseRatio :: Parser LispVal
+parseRatio = do
+  n <- many1 digit
+  char '/'
+  d <- many1 digit
+  return . Ratio $ (read n) % (read d)
   
 
+parseComplex :: Parser LispVal
+parseComplex = do
+  x <- try parseReal <|> parseNumber
+  skipMany space
+  char '+'
+  skipMany space
+  y <- try parseReal <|> parseNumber
+  char 'i'
+  let a = toDouble x
+      b = toDouble y
+  return . Complex $ a :+ b
+  where toDouble :: LispVal -> Double
+        toDouble (Real n) = n
+        toDouble (Number n) = fromIntegral n
 
 parseBoolean :: Parser LispVal
 parseBoolean = do
@@ -41,7 +58,7 @@ parseReal = do
   f <- many1 digit
   return . Real . fst . head . readFloat $ i ++ "." ++ f
 
-
+--TODO: exact and inexact; precision
 parseNumber :: Parser LispVal
 parseNumber = parseDig1 <|> parseDig2 <|> parseBin <|> parseOct <|> parseHex
 
@@ -137,7 +154,9 @@ parseString = do
 
 parseExpr :: Parser LispVal
 parseExpr = try parseBoolean <|>
+            try parseComplex <|>
             try parseReal <|> 
+            try parseRatio <|>
             try parseNumber <|>
             try parseNamedChar <|>
             try parseChar <|>
