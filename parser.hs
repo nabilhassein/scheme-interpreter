@@ -9,6 +9,7 @@ import Numeric
 
 data LispVal = List [LispVal]
              | DottedList [LispVal] LispVal
+             | Vector [LispVal]
              | Number Integer
              | Complex (Complex Double)
              | Real Double
@@ -162,11 +163,26 @@ parseString = do
   return $ String x
 
 
-parseQuoted :: Parser LispVal
-parseQuoted = do
+parseQuote :: Parser LispVal
+parseQuote = do
   char '\''
   x <- parseExpr
   return $ List [Atom "quote", x]
+
+
+--TODO: commas, etc.
+parseQuasiquote :: Parser LispVal
+parseQuasiquote = do
+  char '`'
+  x <- parseExpr
+  return $ List [Atom "quasiquote", x]
+
+
+parseUnquote :: Parser LispVal
+parseUnquote = do
+  char ','
+  x <- parseExpr
+  return $ List [Atom "unquote", x]
 
 
 spaces :: Parser ()
@@ -191,6 +207,15 @@ parseDottedList = do
   return $ DottedList x xs
 
 
+parseVector :: Parser LispVal
+parseVector = do
+  char '#'
+  char '('
+  x <- parseExpr
+  char ')'
+  return $ Vector [x]
+
+
 parseExpr :: Parser LispVal
 parseExpr = try parseBoolean <|>
             try parseComplex <|>
@@ -200,7 +225,9 @@ parseExpr = try parseBoolean <|>
             try parseChar <|>
             try parseAtom <|> 
             try parseString <|>
-            try parseQuoted <|>
+            try parseQuote <|>
+            try parseUnquote <|>
+            try parseQuasiquote <|>
             try parseList <|>
             parseDottedList
 
