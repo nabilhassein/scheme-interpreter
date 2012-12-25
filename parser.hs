@@ -3,6 +3,7 @@ import Data.Char (digitToInt)
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Numeric
+import Data.Maybe (fromJust)
 
 
 data LispVal = Atom String
@@ -12,26 +13,9 @@ data LispVal = Atom String
              | String String
              | Bool Bool
              | Char Char
+             | Float Double
              deriving Show
 
-
-symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=>?@^_~"
-
-characterNames :: [String]
-characterNames = [ "nul"
-                 , "alarm"
-                 , "backspace"
-                 , "tab"
-                 , "linefeed"
-                 , "newline"
-                 , "vtab"
-                 , "page"
-                 , "return"
-                 , "esc"
-                 , "space"
-                 , "delete"
-                 ]
 
 parseBool :: Parser LispVal
 parseBool = do
@@ -42,8 +26,37 @@ parseBool = do
     'f' -> Bool False
 
 
+characterNames :: [(String, Char)]
+characterNames = [ ("nul", '\NUL')
+                 , ("alarm", '\BEL')
+                 , ("backspace", '\BS')
+                 , ("tab", '\t')
+                 , ("linefeed", '\n')
+                 , ("newline", '\n')
+                 , ("vtab", '\v')
+                 , ("page", '\f')
+                 , ("return", '\CR')
+                 , ("esc", '\ESC')
+                 , ("space", ' ')
+                 , ("delete", '\DEL')
+                 ]
+
+tryAll :: [(String, Char)] -> [GenParser Char st String]
+tryAll xs = [try (string s) | s <- strings xs]
+  where strings :: [(String, Char)] -> [String]
+        strings = map fst 
+
 parseChar :: Parser LispVal
-parseChar = undefined
+parseChar = do
+  string "#\\"
+  x <- foldr1 (<|>) (tryAll characterNames)
+  return . Char . fromJust $ lookup x characterNames
+
+parseChar2 :: Parser LispVal
+parseChar2 = do
+  string "#\\"
+  (letter <|> digit) >>= return . Char
+
 
 escapedChar :: Parser Char
 escapedChar = do
@@ -61,6 +74,10 @@ parseString = do
   x <- many $ escapedChar <|> noneOf "\"\\"
   char '"'
   return $ String x
+
+
+symbol :: Parser Char
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 parseAtom :: Parser LispVal
 parseAtom = do
@@ -81,6 +98,7 @@ parseDig2 = do
   x <- many1 digit
   return . Number . read $ x
 
+parseBin :: Parser LispVal
 parseBin = do
   try $ string "b#"
   x <- many1 $ oneOf "01"
@@ -88,19 +106,35 @@ parseBin = do
   where readBin = readInt 2 isBinaryDigit digitToInt
         isBinaryDigit x = x `elem` "01"
 
+parseOct :: Parser LispVal
 parseOct = do
   try $ string "o#"
   x <- many1 octDigit
   return . Number . fst . head . readOct $ x
 
+parseHex :: Parser LispVal
 parseHex = do
   try $ string "h#"
   x <- many1 hexDigit
   return . Number . fst . head . readHex $ x
 
 
+parseFloat :: Parser LispVal
+parseFloat = do
+  i <- many1 digit
+  char '.'
+  f <- many1 digit
+  return . Float . fst . head . readFloat $ i ++ "." ++ f
+
+
 parseExpr :: Parser LispVal
-parseExpr = parseBool <|> parseAtom <|> parseNumber <|> parseString <|> parseChar
+parseExpr = try parseBool <|>
+            try parseFloat <|> 
+            try parseNumber <|>
+            try parseChar <|>
+            try parseChar2 <|>
+            try parseAtom <|> 
+            parseString
 
 readExpr :: String -> String
 readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
@@ -108,6 +142,7 @@ readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
   Right val -> "Found value: " ++ show val
 
 
+main :: IO ()
 main = do
   args <- getArgs
-  putStrLn $ readExpr (args !! 0)
+  putStrLn . readExpr $ args !! 0
