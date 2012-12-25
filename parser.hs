@@ -50,13 +50,13 @@ parseDig1 = many1 digit >>= return . Number . read
 
 parseDig2 :: Parser LispVal
 parseDig2 = do
-  string "d#"
+  string "d#" <|> string "D#"
   x <- many1 digit
   return . Number . read $ x
 
 parseBin :: Parser LispVal
 parseBin = do
-  string "b#"
+  string "b#" <|> string "B#"
   x <- many1 $ oneOf "01"
   return . Number . fst . head . readBin $ x
   where readBin = readInt 2 isBinaryDigit digitToInt
@@ -64,13 +64,13 @@ parseBin = do
 
 parseOct :: Parser LispVal
 parseOct = do
-  string "o#"
+  string "o#" <|> string "O#"
   x <- many1 octDigit
   return . Number . fst . head . readOct $ x
 
 parseHex :: Parser LispVal
 parseHex = do
-  string "h#"
+  string "h#" <|> string "H#"
   x <- many1 hexDigit
   return . Number . fst . head . readHex $ x
 
@@ -93,7 +93,7 @@ characterNames = [ ("nul", '\NUL')
 tryAll :: [(String, Char)] -> [GenParser Char st String]
 tryAll xs = [try (string s) | s <- strings xs]
   where strings :: [(String, Char)] -> [String]
-        strings = map fst 
+        strings = map fst
 
 parseNamedChar :: Parser LispVal
 parseNamedChar = do
