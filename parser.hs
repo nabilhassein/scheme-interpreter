@@ -1,3 +1,5 @@
+module Parser where
+
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment (getArgs)
 import Data.Maybe (fromJust)
@@ -18,7 +20,26 @@ data LispVal = List [LispVal]
              | Character Char
              | Boolean Bool
              | Atom String
-             deriving Show
+
+showVal :: LispVal -> String
+showVal (List xs)         = "(" ++ unwordsList xs ++ ")"
+showVal (DottedList xs x) = "(" ++ unwordsList xs ++ showVal x ++ ")"
+showVal (Vector (n, xs))  = "#(" ++ unwordsList xs ++ ")"
+showVal (Number n)        = show n
+showVal (Complex c)       = show (realPart c) ++ show (imagPart c)
+showVal (Real r)          = show r
+showVal (Ratio n)         = show (numerator n) ++ "/" ++ show (denominator n)
+showVal (String s)        = "\"" ++ s ++ "\""
+showVal (Character c)     = "'" ++ [c] ++ "'"
+showVal (Boolean True)    = "#t"
+showVal (Boolean False)   = "#f"
+showVal (Atom a)          = a
+
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
+
+instance Show LispVal where
+  show = showVal
 
 
 parseBoolean :: Parser LispVal
