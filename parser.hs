@@ -1,4 +1,4 @@
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment (getArgs)
 import Data.Maybe (fromJust)
 import Data.Char (digitToInt)
@@ -162,6 +162,35 @@ parseString = do
   return $ String x
 
 
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
+
+
+spaces :: Parser ()
+spaces = skipMany1 space
+
+parseList :: Parser LispVal
+parseList = do
+  char '('
+  x <- fmap List $ sepBy parseExpr spaces
+  char ')'
+  return x
+
+
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  char '('
+  x <- endBy parseExpr spaces
+  char '.'
+  spaces
+  xs <- parseExpr
+  char ')'
+  return $ DottedList x xs
+
+
 parseExpr :: Parser LispVal
 parseExpr = try parseBoolean <|>
             try parseComplex <|>
@@ -170,7 +199,10 @@ parseExpr = try parseBoolean <|>
             try parseNumber <|>
             try parseChar <|>
             try parseAtom <|> 
-            parseString
+            try parseString <|>
+            try parseQuoted <|>
+            try parseList <|>
+            parseDottedList
 
 readExpr :: String -> String
 readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
