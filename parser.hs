@@ -46,14 +46,14 @@ tryAll xs = [try (string s) | s <- strings xs]
   where strings :: [(String, Char)] -> [String]
         strings = map fst 
 
-parseChar :: Parser LispVal
-parseChar = do
+parseNamedChar :: Parser LispVal
+parseNamedChar = do
   string "#\\"
   x <- foldr1 (<|>) (tryAll characterNames)
   return . Char . fromJust $ lookup x characterNames
 
-parseChar2 :: Parser LispVal
-parseChar2 = do
+parseChar :: Parser LispVal
+parseChar = do
   string "#\\"
   (letter <|> digit) >>= return . Char
 
@@ -94,13 +94,13 @@ parseDig1 = many1 digit >>= return . Number . read
 
 parseDig2 :: Parser LispVal
 parseDig2 = do
-  try $ string "d#"
+  string "d#"
   x <- many1 digit
   return . Number . read $ x
 
 parseBin :: Parser LispVal
 parseBin = do
-  try $ string "b#"
+  string "b#"
   x <- many1 $ oneOf "01"
   return . Number . fst . head . readBin $ x
   where readBin = readInt 2 isBinaryDigit digitToInt
@@ -108,13 +108,13 @@ parseBin = do
 
 parseOct :: Parser LispVal
 parseOct = do
-  try $ string "o#"
+  string "o#"
   x <- many1 octDigit
   return . Number . fst . head . readOct $ x
 
 parseHex :: Parser LispVal
 parseHex = do
-  try $ string "h#"
+  string "h#"
   x <- many1 hexDigit
   return . Number . fst . head . readHex $ x
 
@@ -131,8 +131,8 @@ parseExpr :: Parser LispVal
 parseExpr = try parseBool <|>
             try parseFloat <|> 
             try parseNumber <|>
+            try parseNamedChar <|>
             try parseChar <|>
-            try parseChar2 <|>
             try parseAtom <|> 
             parseString
 
