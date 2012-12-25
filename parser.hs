@@ -19,13 +19,15 @@ data LispVal = List [LispVal]
              | Atom String
              deriving Show
 
-parseRatio :: Parser LispVal
-parseRatio = do
-  n <- many1 digit
-  char '/'
-  d <- many1 digit
-  return . Ratio $ (read n) % (read d)
-  
+
+parseBoolean :: Parser LispVal
+parseBoolean = do
+  char '#'
+  x <- oneOf "tf"
+  return $ case x of
+    't' -> Boolean True
+    'f' -> Boolean False
+
 
 parseComplex :: Parser LispVal
 parseComplex = do
@@ -42,14 +44,6 @@ parseComplex = do
         toDouble (Real n) = n
         toDouble (Number n) = fromIntegral n
 
-parseBoolean :: Parser LispVal
-parseBoolean = do
-  char '#'
-  x <- oneOf "tf"
-  return $ case x of
-    't' -> Boolean True
-    'f' -> Boolean False
-
 
 parseReal :: Parser LispVal
 parseReal = do
@@ -58,9 +52,22 @@ parseReal = do
   f <- many1 digit
   return . Real . fst . head . readFloat $ i ++ "." ++ f
 
+
+parseRatio :: Parser LispVal
+parseRatio = do
+  n <- many1 digit
+  char '/'
+  d <- many1 digit
+  return . Ratio $ (read n) % (read d)
+  
+
 --TODO: exact and inexact; precision
 parseNumber :: Parser LispVal
-parseNumber = parseDig1 <|> parseDig2 <|> parseBin <|> parseOct <|> parseHex
+parseNumber = parseDig1 <|>
+              parseDig2 <|>
+              parseBin <|>
+              parseOct <|>
+              parseHex
 
 parseDig1 :: Parser LispVal
 parseDig1 = many1 digit >>= return . Number . read
@@ -118,10 +125,23 @@ parseNamedChar = do
   x <- foldr1 (<|>) (tryAll characterNames)
   return . Character . fromJust $ lookup x characterNames
 
-parseChar :: Parser LispVal
-parseChar = do
+parseRegularChar :: Parser LispVal
+parseRegularChar = do
   string "#\\"
-  anyChar >>= return . Character
+  anyChar>>= return . Character
+
+parseChar :: Parser LispVal
+parseChar = try parseNamedChar <|> parseRegularChar
+
+
+symbol :: Parser Char
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
+
+parseAtom :: Parser LispVal
+parseAtom = do
+  first <- letter <|> symbol
+  rest <- many $ letter <|> digit <|> symbol
+  return . Atom $ first:rest
 
 
 escapedChar :: Parser Char
@@ -133,16 +153,6 @@ escapedChar = do
     'r' -> '\r'
     't' -> '\t'
     _   -> x   -- literal quote or backslash
-
-symbol :: Parser Char
-symbol = oneOf "!$%&|*+-/:<=>?@^_~"
-
-parseAtom :: Parser LispVal
-parseAtom = do
-  first <- letter <|> symbol
-  rest <- many $ letter <|> digit <|> symbol
-  return . Atom $ first:rest
-
 
 parseString :: Parser LispVal
 parseString = do
@@ -158,7 +168,6 @@ parseExpr = try parseBoolean <|>
             try parseReal <|> 
             try parseRatio <|>
             try parseNumber <|>
-            try parseNamedChar <|>
             try parseChar <|>
             try parseAtom <|> 
             parseString
