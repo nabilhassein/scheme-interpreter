@@ -21,6 +21,9 @@ data LispVal = List [LispVal]
              | Boolean Bool
              | Atom String
 
+instance Show LispVal where
+  show = showVal
+
 showVal :: LispVal -> String
 showVal (List xs)         = "(" ++ unwordsList xs ++ ")"
 showVal (DottedList xs x) = "(" ++ unwordsList xs ++ showVal x ++ ")"
@@ -37,9 +40,6 @@ showVal (Atom a)          = a
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
-
-instance Show LispVal where
-  show = showVal
 
 
 parseBoolean :: Parser LispVal
@@ -137,7 +137,7 @@ characterNames = [ ("nul", '\NUL')
                  ]
 
 tryAll :: [(String, Char)] -> [GenParser Char st String]
-tryAll xs = [try (string s) | s <- strings xs]
+tryAll xs = map (try . string) (strings xs)
   where strings :: [(String, Char)] -> [String]
         strings = map fst
 
@@ -230,8 +230,7 @@ parseDottedList = do
 
 parseVector :: Parser LispVal
 parseVector = do
-  char '#'
-  char '('
+  string "#("
   x <- sepBy parseExpr spaces1
   char ')'
   return $ Vector (length x, x)
