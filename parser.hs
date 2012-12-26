@@ -26,7 +26,7 @@ instance Show LispVal where
 
 showVal :: LispVal -> String
 showVal (List xs)         = "(" ++ unwordsList xs ++ ")"
-showVal (DottedList xs x) = "(" ++ unwordsList xs ++ showVal x ++ ")"
+showVal (DottedList xs x) = "(" ++ unwordsList xs ++ " . " ++ showVal x ++ ")"
 showVal (Vector (n, xs))  = "#(" ++ unwordsList xs ++ ")"
 showVal (Number n)        = show n
 showVal (Complex c)       = show (realPart c) ++ show (imagPart c)
