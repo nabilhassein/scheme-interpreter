@@ -33,6 +33,11 @@ primitives = [ ("+"             , numericBinOp (+))
              , ("string>?"      , strBoolBinOp (>))
              , ("string<=?"     , strBoolBinOp (<=))
              , ("string>=?"     , strBoolBinOp (>=))
+             , ("car"           , car)
+             , ("cdr"           , cdr)
+             , ("cons"          , cons)
+             , ("eqv?"          , eqv)
+             , ("eq?"           , eqv)
              ]
 
 --TODO: complex, real, ratio
@@ -121,4 +126,22 @@ cons [x, y]               = return $ DottedList [x] y
 cons x                    = throwError $ NumArgs 2 x
 
 eqv :: [LispVal] -> ThrowsError LispVal
-eqv = undefined
+eqv [(List arg1), (List arg2)]             = return . Boolean $ (length arg1 == length arg2)
+                                             && (all eqvPair $ zip arg1 arg2)
+    where eqvPair (x1, x2) = case eqv [x1, x2] of
+            Left err            -> False
+            Right (Boolean val) -> val
+eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
+eqv [(Vector (l1, arg1)), (Vector (l2, arg2))] = if l1 == l2
+                                                 then eqv [List arg1, List arg2]
+                                                 else return $ Boolean False   
+eqv [(Number arg1), (Number arg2)]         = return . Boolean $ arg1 == arg2
+eqv [(Complex arg1), (Complex arg2)]       = return . Boolean $ arg1 == arg2
+eqv [(Real arg1), (Real arg2)]             = return . Boolean $ arg1 == arg2
+eqv [(Ratio arg1), (Ratio arg2)]           = return . Boolean $ arg1 == arg2
+eqv [(String arg1), (String arg2)]         = return . Boolean $ arg1 == arg2
+eqv [(Character arg1), (Character arg2)]   = return . Boolean $ arg1 == arg2
+eqv [(Boolean arg1), (Boolean arg2)]       = return . Boolean $ arg1 == arg2
+eqv [(Atom arg1), (Atom arg2)]             = return . Boolean $ arg1 == arg2
+eqv [_, _]                                 = return $ Boolean False
+eqv badArgList                             = throwError $ NumArgs 2 badArgList
