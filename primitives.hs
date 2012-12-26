@@ -1,9 +1,11 @@
+{-# Language ExistentialQuantification #-}
+
 module Primitives where
 
 import Parser
 import Error
 import Text.ParserCombinators.Parsec
-import Control.Monad.Error (throwError)
+import Control.Monad.Error (throwError, catchError)
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [ ("+"             , numericBinOp (+))
@@ -42,28 +44,28 @@ primitives = [ ("+"             , numericBinOp (+))
 
 --TODO: complex, real, ratio
 numericBinOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericBinOp op params = case length params of
-  2 -> mapM unpackNum params >>= return . Number . foldl1 op
-  _ -> throwError $ NumArgs 2 params
+numericBinOp op params = if length params == 2
+                         then mapM unpackNum params >>= return . Number . foldl1 op
+                         else throwError $ NumArgs 2 params
 
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
-unpackNum x          = throwError $ TypeMismatch "number" x
+unpackNum badArg     = throwError $ TypeMismatch "number" badArg
 
 unpackStr :: LispVal -> ThrowsError String
 unpackStr (String s) = return s
-unpackStr x          = throwError $ TypeMismatch "string" x
+unpackStr badArg     = throwError $ TypeMismatch "string" badArg
 
 unpackBool :: LispVal -> ThrowsError Bool
 unpackBool (Boolean b) = return b
-unpackBool x           = throwError $ TypeMismatch "boolean" x
+unpackBool badArg      = throwError $ TypeMismatch "boolean" badArg
 
 
 unaryOp :: (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
-unaryOp f []  = throwError $ NumArgs 1 []
-unaryOp f [v] = return $ f v
-unaryOp f xs  = throwError $ NumArgs 1 xs
+unaryOp f xs = case xs of
+  [x] -> return $ f x
+  _   -> throwError $ NumArgs 1 xs
 
 booleanp, stringp, numberp, symbolp, listp :: LispVal -> LispVal
 booleanp (Boolean _)   = Boolean True
@@ -93,12 +95,11 @@ stringToSymbol (String s) = Atom s
 
 
 boolBinOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
-boolBinOp unpacker op args = case length args of
-  2 -> do
-    left  <- unpacker $ args !! 0
-    right <- unpacker $ args !! 1
-    return . Boolean $ left `op` right
-  _ -> throwError $ NumArgs 2 args
+boolBinOp unpacker op args = if length args == 2
+                             then do left  <- unpacker $ args !! 0
+                                     right <- unpacker $ args !! 1
+                                     return . Boolean $ left `op` right
+                             else throwError $ NumArgs 2 args
 
 numBoolBinOp  = boolBinOp unpackNum
 strBoolBinOp  = boolBinOp unpackStr
@@ -109,21 +110,22 @@ car :: [LispVal] -> ThrowsError LispVal
 car [List (x:xs)]         = return x
 car [DottedList (x:xs) _] = return x
 car [x]                   = throwError $ TypeMismatch "pair" x
-car xs                    = throwError $ NumArgs 1 xs
+car badArgsList           = throwError $ NumArgs 1 badArgsList
 
 cdr :: [LispVal] -> ThrowsError LispVal
 cdr [List (x:xs)]         = return $ List xs
 cdr [DottedList [_] x]    = return x
 cdr [DottedList (_:xs) y] = return $ DottedList xs y
 cdr [x]                   = throwError $ TypeMismatch "pair" x
-cdr xs                    = throwError $ NumArgs 1 xs
+cdr badArgsList           = throwError $ NumArgs 1 badArgsList
 
 cons :: [LispVal] -> ThrowsError LispVal
 cons [x, List []]         = return $ List [x]
 cons [x, List xs]         = return $ List (x:xs)
 cons [x, DottedList xs y] = return $ DottedList (x:xs) y
 cons [x, y]               = return $ DottedList [x] y
-cons x                    = throwError $ NumArgs 2 x
+cons badArgList           = throwError $ NumArgs 2 badArgList
+
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(List arg1), (List arg2)]             = return . Boolean $ (length arg1 == length arg2)
@@ -145,3 +147,12 @@ eqv [(Boolean arg1), (Boolean arg2)]       = return . Boolean $ arg1 == arg2
 eqv [(Atom arg1), (Atom arg2)]             = return . Boolean $ arg1 == arg2
 eqv [_, _]                                 = return $ Boolean False
 eqv badArgList                             = throwError $ NumArgs 2 badArgList
+
+
+data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
+
+unpackEquals  :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
+unpackEquals x y (AnyUnpacker unpack) = do
+  unpackedx <- unpack x
+  unpackedy <- unpack y
+  return (unpackedx == unpackedy) `catchError` (const $ return False)
