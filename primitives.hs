@@ -40,6 +40,7 @@ primitives = [ ("+"             , numericBinOp (+))
              , ("cons"          , cons)
              , ("eqv?"          , eqv)
              , ("eq?"           , eqv)
+             , ("equal?"        , equal)
              ]
 
 --TODO: complex, real, ratio
@@ -151,8 +152,18 @@ eqv badArgList                             = throwError $ NumArgs 2 badArgList
 
 data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
 
-unpackEquals  :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
+unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
 unpackEquals x y (AnyUnpacker unpack) = do
   unpackedx <- unpack x
   unpackedy <- unpack y
   return (unpackedx == unpackedy) `catchError` (const $ return False)
+
+equal :: [LispVal] -> ThrowsError LispVal
+equal [arg1, arg2] = do
+  primitiveEquals <- fmap or $ mapM (unpackEquals arg1 arg2) [AnyUnpacker unpackNum,
+                                                              AnyUnpacker unpackStr,
+                                                              AnyUnpacker unpackBool]
+  eqvEquals <- eqv [arg1, arg2]
+  return . Boolean $ primitiveEquals || let (Boolean x) = eqvEquals in x
+equal badArgList = throwError $ NumArgs 2 badArgList
+
