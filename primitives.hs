@@ -128,14 +128,15 @@ cons [x, y]               = return $ DottedList [x] y
 cons badArgList           = throwError $ NumArgs 2 badArgList
 
 
+--TODO: figure out equality between numerical types
 eqv :: [LispVal] -> ThrowsError LispVal
-eqv [(List arg1), (List arg2)]             = return . Boolean $ (length arg1 == length arg2)
-                                             && (all eqvPair $ zip arg1 arg2)
+eqv [(List arg1), (List arg2)] = return . Boolean $ (length arg1 == length arg2)
+                                 && (all eqvPair $ zip arg1 arg2)
     where eqvPair (x1, x2) = case eqv [x1, x2] of
             Left err            -> False
             Right (Boolean val) -> val
 eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
-eqv [(Vector (l1, arg1)), (Vector (l2, arg2))] = if l1 == l2
+eqv [(Vector (length1, arg1)), (Vector (length2, arg2))] = if length1 == length2
                                                  then eqv [List arg1, List arg2]
                                                  else return $ Boolean False   
 eqv [(Number arg1), (Number arg2)]         = return . Boolean $ arg1 == arg2
@@ -149,7 +150,7 @@ eqv [(Atom arg1), (Atom arg2)]             = return . Boolean $ arg1 == arg2
 eqv [_, _]                                 = return $ Boolean False
 eqv badArgList                             = throwError $ NumArgs 2 badArgList
 
-
+--TODO: weak typing?
 data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
 
 unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool

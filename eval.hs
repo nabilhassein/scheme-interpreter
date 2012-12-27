@@ -5,7 +5,8 @@ import Error
 import Primitives
 import Text.ParserCombinators.Parsec
 import Control.Monad.Error (throwError)
-import System.Environment (getArgs)
+import System.Environment (getArgs, getProgName)
+import System.IO
 
 eval :: LispVal -> ThrowsError LispVal
 eval val@(Number _)             = return val
@@ -31,6 +32,29 @@ apply f args = maybe (throwError $ NotFunction "unrecognized primitive function 
                (lookup f primitives)
 
 
+flushStr :: String -> IO ()
+flushStr str = putStr str >> hFlush stdout
+
+readPrompt :: String -> IO String
+readPrompt prompt = flushStr prompt >> getLine
+
+evalString :: String -> IO String
+evalString expr = return . extractValue . trapError $ fmap show $ readExpr expr >>= eval
+
+evalAndPrint :: String -> IO ()
+evalAndPrint expr = evalString expr >>= putStrLn
+
+untilM_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
+untilM_ pred prompt action = do
+  result <- prompt
+  if pred result
+    then return ()
+    else action result >> untilM_ pred prompt action
+
+repl :: IO ()
+repl = untilM_ (`elem` ["quit", "exit"]) (readPrompt "scheme> ") evalAndPrint
+
+
 readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
   Left err  -> throwError $ Parser err
@@ -39,6 +63,12 @@ readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
 main :: IO ()
 main = do
   args <- getArgs
-  evaled <- return . fmap show $ readExpr (head args) >>= eval
-  putStrLn . extractValue $ trapError evaled
+  case length args of
+    0 -> repl
+    1 -> evalAndPrint $ head args
+    _ -> do
+      progName <- getProgName
+      putStrLn $ "Usage: " ++ progName ++ " [expr]"
+--  evaled <- return . fmap show $ readExpr (head args) >>= eval
+--  putStrLn . extractValue $ trapError evaled
 
