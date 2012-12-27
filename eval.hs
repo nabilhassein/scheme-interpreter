@@ -4,6 +4,7 @@ import Parser
 import Error
 import Primitives
 import Text.ParserCombinators.Parsec
+import Control.Monad (forM)
 import Control.Monad.Error (throwError)
 import System.Environment (getArgs, getProgName)
 import System.IO
@@ -22,6 +23,16 @@ eval (List [Atom "if", predicate, consequent, alternative]) = do
   eval $ case result of
     Boolean False -> alternative
     _             -> consequent
+eval form@(List (Atom "cond" : clauses)) =
+  if null clauses
+  then throwError $ BadSpecialForm "no well-formed, true clause in case expression" form
+  else case head clauses of
+    List [test, expr] -> eval $ List [Atom "if",
+                                      test,
+                                      expr,
+                                      List (Atom "cond" : tail clauses)]
+    _                 -> throwError $ BadSpecialForm
+                         "no well-formed, true clause in case expression" form
 eval (List (Atom f : args))     = mapM eval args >>= apply f
 eval badForm                    = throwError $ BadSpecialForm
                                   "unrecognized special form" badForm
@@ -39,7 +50,7 @@ readPrompt :: String -> IO String
 readPrompt prompt = flushStr prompt >> getLine
 
 evalString :: String -> IO String
-evalString expr = return . extractValue . trapError $ fmap show $ readExpr expr >>= eval
+evalString expr = return . extractValue . trapError . fmap show $ readExpr expr >>= eval
 
 evalAndPrint :: String -> IO ()
 evalAndPrint expr = evalString expr >>= putStrLn
@@ -69,6 +80,4 @@ main = do
     _ -> do
       progName <- getProgName
       putStrLn $ "Usage: " ++ progName ++ " [expr]"
---  evaled <- return . fmap show $ readExpr (head args) >>= eval
---  putStrLn . extractValue $ trapError evaled
 
