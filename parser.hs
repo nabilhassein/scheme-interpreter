@@ -20,6 +20,7 @@ data LispVal = List [LispVal]
              | Character Char
              | Boolean Bool
              | Atom String
+             deriving (Eq)
 
 instance Show LispVal where
   show = showVal
