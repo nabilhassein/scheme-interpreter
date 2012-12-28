@@ -33,19 +33,19 @@ eval form@(List (Atom "cond" : clauses)) =
                                              test,
                                              expr,
                                              List (Atom "cond" : tail clauses)]
-    _ -> throwError $ BadSpecialForm "ill-formed cond expression: " form  
+    _ -> throwError $ BadSpecialForm "ill-formed cond expression: " form
 eval form@(List (Atom "case" : key : clauses)) =
   if null clauses
   then throwError $ BadSpecialForm "no true clause in case expression: " form
   else case head clauses of
-    List (Atom "else" : exprs) -> mapM eval exprs >>= return . last
+    List (Atom "else" : exprs)   -> mapM eval exprs >>= return . last
     List ((List datums) : exprs) -> do
       result <- eval key
       equality <- mapM (\x -> eqv [result, x]) datums
       if Boolean True `elem` equality
         then mapM eval exprs >>= return . last
         else eval $ List (Atom "case" : key : tail clauses)
-    _                     -> throwError $ BadSpecialForm "ill-formed case expression: " form  
+    _ -> throwError $ BadSpecialForm "ill-formed case expression: " form
 eval (List (Atom f : args))     = mapM eval args >>= apply f
 eval badForm                    = throwError $ BadSpecialForm
                                   "unrecognized special form" badForm
@@ -56,17 +56,12 @@ apply f args = maybe (throwError $ NotFunction "unrecognized primitive function 
                (lookup f primitives)
 
 
-flushStr :: String -> IO ()
-flushStr str = putStr str >> hFlush stdout
-
 readPrompt :: String -> IO String
-readPrompt prompt = flushStr prompt >> getLine
-
-evalString :: String -> IO String
-evalString expr = return . extractValue . trapError . fmap show $ readExpr expr >>= eval
+readPrompt prompt = putStr prompt >> hFlush stdout >> getLine
 
 evalAndPrint :: String -> IO ()
-evalAndPrint expr = evalString expr >>= putStrLn
+evalAndPrint expr = putStrLn =<< (return . extractValue . trapError .
+                                  fmap show $ readExpr expr >>= eval)
 
 untilM_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 untilM_ pred prompt action = do
