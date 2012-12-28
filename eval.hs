@@ -3,6 +3,7 @@ module Main where
 import Parser
 import Error
 import Primitives
+import Vars
 import Text.ParserCombinators.Parsec
 import Control.Monad (forM)
 import Control.Monad.Error (throwError)
