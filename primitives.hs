@@ -129,6 +129,7 @@ cons badArgList           = throwError $ NumArgs 2 badArgList
 
 
 --TODO: figure out equality between numerical types
+--TODO: make eq, eqv, equal truly schemish instead of as in tutorial
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(List arg1), (List arg2)] = return . Boolean $ (length arg1 == length arg2)
                                  && (all eqvPair $ zip arg1 arg2)
@@ -150,7 +151,6 @@ eqv [(Atom arg1), (Atom arg2)]             = return . Boolean $ arg1 == arg2
 eqv [_, _]                                 = return $ Boolean False
 eqv badArgList                             = throwError $ NumArgs 2 badArgList
 
---TODO: weak typing?
 data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
 
 unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
@@ -161,7 +161,7 @@ unpackEquals x y (AnyUnpacker unpack) = do
 
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
-  primitiveEquals <- fmap or $ mapM (unpackEquals arg1 arg2) [AnyUnpacker unpackNum,
+  primitiveEquals <- fmap or $ mapM (unpackEquals arg1 arg2)[AnyUnpacker unpackNum,
                                                               AnyUnpacker unpackStr,
                                                               AnyUnpacker unpackBool]
   eqvEquals <- eqv [arg1, arg2]
