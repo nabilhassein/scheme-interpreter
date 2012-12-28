@@ -23,16 +23,18 @@ eval (List [Atom "if", predicate, consequent, alternative]) = do
   eval $ case result of
     Boolean False -> alternative
     _             -> consequent
+-- TODO: how to retain original form in error message after recursing?
 eval form@(List (Atom "cond" : clauses)) =
   if null clauses
-  then throwError $ BadSpecialForm "no well-formed, true clause in case expression" form
+  then throwError $ BadSpecialForm "no true clause in cond expression: " form
   else case head clauses of
-    List [test, expr] -> eval $ List [Atom "if",
-                                      test,
-                                      expr,
-                                      List (Atom "cond" : tail clauses)]
-    _                 -> throwError $ BadSpecialForm
-                         "no well-formed, true clause in case expression" form
+    List [test, expr] -> case test of
+      Atom "else" -> eval expr
+      _ -> eval $ List [Atom "if",
+                        test,
+                        expr,
+                        List (Atom "cond" : tail clauses)]
+    _                 -> throwError $ BadSpecialForm "ill-formed cond expression: " form  
 eval (List (Atom f : args))     = mapM eval args >>= apply f
 eval badForm                    = throwError $ BadSpecialForm
                                   "unrecognized special form" badForm
