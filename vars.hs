@@ -17,6 +17,6 @@ liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err)  = throwError err
 liftThrows (Right val) = return val
 
---runIOThrows :: IOThrowsError String -> IO String
---runIOThrows action = runErrorT (trapError action) >>= return . extractValue
+runIOThrows :: IOThrowsError String -> IO String
+runIOThrows action = runErrorT (trapError action) >>= return . extractValue
 

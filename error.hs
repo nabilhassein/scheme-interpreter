@@ -31,7 +31,7 @@ showError (TypeMismatch expected found) = "Invalid type: expected " ++ expected
                                           ++ ", found " ++ show found
 showError (Parser parseErr)             = "Parse error at " ++ show parseErr
 
-trapError :: ThrowsError String -> ThrowsError String
+trapError :: (Show e, MonadError e m) => m String -> m String
 trapError action = catchError action (return . show)
 
 extractValue :: ThrowsError a -> a
