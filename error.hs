@@ -31,6 +31,8 @@ showError (TypeMismatch expected found) = "Invalid type: expected " ++ expected
                                           ++ ", found " ++ show found
 showError (Parser parseErr)             = "Parse error at " ++ show parseErr
 
+-- tutorial gives type as below; is there an intermediate level of generality?
+--trapError :: ThrowsError String -> ThrowsError String
 trapError :: (Show e, MonadError e m) => m String -> m String
 trapError action = catchError action (return . show)
 
