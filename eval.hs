@@ -1,5 +1,8 @@
 {-# Language ExistentialQuantification #-}
 
+-- TODO: refactor modules
+-- TODO: implement the rest of scheme!
+
 module Main where
 
 import LispVal
@@ -201,6 +204,7 @@ readExpr = readOrThrow parseExpr
 readExprList :: String -> ThrowsError [LispVal]
 readExprList = readOrThrow (endBy parseExpr spaces)
 
+-- TODO: figure out a good way to handle standard library (evaluate by default?)
 main :: IO ()
 main = do
   args <- getArgs
