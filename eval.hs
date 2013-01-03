@@ -93,6 +93,7 @@ eval env badForm = throwError $ BadSpecialForm "unrecognized special form" badFo
 
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc f) args = liftThrows $ f args
+apply (IOFunc f) args = f args
 apply (Func params varargs body closure) args =
   if num params /= num args && varargs == Nothing
   then throwError $ NumArgs (num params) args
@@ -136,10 +137,16 @@ repl :: IO ()
 repl = primitiveBindings >>= untilM_ (`elem` ["quit", "exit"]) (readPrompt "scheme> ") . evalAndPrint
 
 
-readExpr :: String -> ThrowsError LispVal
-readExpr input = case parse (skipMany space >> parseExpr) "scheme" input of
+readOrThrow :: Parser a -> String -> ThrowsError a
+readOrThrow parser input = case parse parser "scheme" input of
   Left err  -> throwError $ Parser err
   Right val -> return val
+
+readExpr :: String -> ThrowsError LispVal
+readExpr = readOrThrow parseExpr
+
+readExprList :: String -> ThrowsError [LispVal]
+readExprList = readOrThrow (endBy parseExpr spaces)
 
 main :: IO ()
 main = do

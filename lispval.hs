@@ -6,6 +6,7 @@ import Data.IORef
 import Data.Ratio
 import Data.Complex
 import Numeric
+import System.IO
 
 data LispVal = List [LispVal]
              | DottedList [LispVal] LispVal
@@ -18,7 +19,9 @@ data LispVal = List [LispVal]
              | Character Char
              | Boolean Bool
              | Atom String
+             | Port Handle
              | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
+             | IOFunc ([LispVal] -> IOThrowsError LispVal)
              | Func { params :: [String], vararg :: Maybe String,
                       body :: [LispVal], closure :: EnvRef }
 
@@ -38,7 +41,9 @@ showVal (Character c)     = "'" ++ [c] ++ "'"
 showVal (Boolean True)    = "#t"
 showVal (Boolean False)   = "#f"
 showVal (Atom a)          = a
+showVal (Port _)          = "<IO Port>"
 showVal (PrimitiveFunc _) = "<primitive>"
+showVal (IOFunc _)        = "<IO primitive>"
 showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
             "(lambda (" ++ unwords (map show args) ++
             case varargs of
