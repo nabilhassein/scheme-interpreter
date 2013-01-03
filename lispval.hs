@@ -62,51 +62,49 @@ data LispError = NumArgs Integer [LispVal]
 type ThrowsError = Either LispError
 
 instance Error LispError where
-  noMsg = Default "An error has occurred"
+  noMsg  = Default "An error has occurred"
   strMsg = Default
 
 instance Show LispError where
   show = showError
 
 showError :: LispError -> String
-showError (UnboundVar message varname)  = message ++ ": " ++ varname
-showError (BadSpecialForm message form) = message ++ ": " ++ show form
-showError (NotFunction message func)    = message ++ ": " ++ show func
 showError (NumArgs expected found)      = "Expected " ++ show expected 
                                           ++ " args; found values " ++ unwordsList found
 showError (TypeMismatch expected found) = "Invalid type: expected " ++ expected
                                           ++ ", found " ++ show found
 showError (Parser parseErr)             = "Parse error at " ++ show parseErr
+showError (BadSpecialForm message form) = message ++ ": " ++ show form
+showError (NotFunction message func)    = message ++ ": " ++ show func
+showError (UnboundVar message varname)  = message ++ ": " ++ varname
+showError (Default string)              = string
 
--- tutorial gives type as below; is there an intermediate level of generality?
---trapError :: ThrowsError String -> ThrowsError String
-trapError :: (Show e, MonadError e m) => m String -> m String
-trapError action = catchError action (return . show)
 
 extractValue :: ThrowsError a -> a
 extractValue (Right val) = val
 
 
 
-type Env = IORef [(String, IORef LispVal)]
-
 type IOThrowsError = ErrorT LispError IO
-
-
-nullEnv :: IO Env
-nullEnv = newIORef []
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err)  = throwError err
 liftThrows (Right val) = return val
 
+trapError :: IOThrowsError String -> IOThrowsError String
+trapError action = action `catchError` (return . show)
+
 runIOThrows :: IOThrowsError String -> IO String
 runIOThrows action = runErrorT (trapError action) >>= return . extractValue
 
-isBound :: Env -> String -> IO Bool
-isBound envRef var = readIORef envRef >>=
-                     return . maybe False (const True) . lookup var
 
+type Env = IORef [(String, IORef LispVal)]
+
+nullEnv :: IO Env
+nullEnv = newIORef []
+
+isBound :: Env -> String -> IO Bool
+isBound envRef var = readIORef envRef >>= return . maybe False (const True) . lookup var
 
 getEnv :: Env -> String -> IOThrowsError LispVal
 getEnv envRef var = do
@@ -115,7 +113,6 @@ getEnv envRef var = do
         (liftIO . readIORef)
         (lookup var env)
 
-
 setVar :: Env -> String -> LispVal -> IOThrowsError LispVal
 setVar envRef var value = do
   env <- liftIO $ readIORef envRef
@@ -123,7 +120,6 @@ setVar envRef var value = do
         (liftIO . (flip writeIORef value))
         (lookup var env)
   return value
-
 
 defineVar :: Env -> String -> LispVal -> IOThrowsError LispVal
 defineVar envRef var value = do
@@ -136,9 +132,9 @@ defineVar envRef var value = do
       writeIORef envRef ((var, valueRef) : env)
       return value
 
-
 bindVars :: Env -> [(String, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
-  where extendEnv bindings env = liftM (++ env) (mapM addBinding bindings)
+  where extendEnv bindings env = fmap (++ env) (mapM addBinding bindings)
         addBinding (var, value) = do ref <- newIORef value
                                      return (var, ref)
+
