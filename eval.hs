@@ -10,9 +10,15 @@ import System.Environment (getArgs, getProgName)
 import System.IO
 
 
+makeFunc :: Maybe String -> Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
+
+makeNormalFunc :: Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeNormalFunc = makeFunc Nothing
+
+makeVarargs :: LispVal -> Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeVarargs = makeFunc . Just . showVal
+
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval env val@(Number _)             = return val
@@ -78,7 +84,8 @@ eval env (List (Atom "lambda" : varargs@(Atom _) : body)) =
 
 eval env (List (f : args)) = do
   func <- eval env f
-  mapM (eval env) args >>= apply f
+  argVals <- mapM (eval env) args
+  apply func argVals
 
 eval env badForm = throwError $ BadSpecialForm "unrecognized special form" badForm
 
@@ -95,6 +102,7 @@ apply (Func params varargs body closure) args =
         bindVarArgs arg env = case arg of
           Nothing       -> return env
           Just argName  -> liftIO $ bindVars env [(argName, List remainingArgs)]
+apply x _ = throwError $ NotFunction "not a function: " (show x)
 
 
 primitiveBindings :: IO Env
@@ -125,7 +133,7 @@ repl = primitiveBindings >>= untilM_ (`elem` ["quit", "exit"]) (readPrompt "sche
 
 
 readExpr :: String -> ThrowsError LispVal
-readExpr input = case parse (skipMany space >> parseExpr) "lisp" input of
+readExpr input = case parse (skipMany space >> parseExpr) "scheme" input of
   Left err  -> throwError $ Parser err
   Right val -> return val
 
