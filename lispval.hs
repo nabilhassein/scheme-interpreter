@@ -100,9 +100,6 @@ runIOThrows action = runErrorT (trapError action) >>= return . extractValue
 
 type EnvRef = IORef [(String, IORef LispVal)]
 
-nullEnv :: IO EnvRef
-nullEnv = newIORef []
-
 getVar :: EnvRef -> String -> IOThrowsError LispVal
 getVar envRef var = do
   env <- liftIO $ readIORef envRef

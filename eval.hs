@@ -8,7 +8,7 @@ import Control.Monad (forM)
 import Control.Monad.Error (throwError, liftIO)
 import System.Environment (getArgs, getProgName)
 import System.IO
-
+import Data.IORef (newIORef)
 
 makeFunc :: Maybe String -> EnvRef -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
@@ -105,6 +105,9 @@ apply (Func params varargs body closure) args =
           Just argName  -> liftIO $ bindVars env [(argName, List remainingArgs)]
 apply x _ = throwError $ NotFunction "not a function: " (show x)
 
+
+nullEnv :: IO EnvRef
+nullEnv = newIORef []
 
 primitiveBindings :: IO EnvRef
 primitiveBindings = nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
