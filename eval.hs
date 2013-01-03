@@ -1,9 +1,7 @@
 module Main where
 
 import LispVal
-import LispError
 import Primitives
-import Vars
 import Parser
 import Text.ParserCombinators.Parsec
 import Control.Monad (forM)
@@ -37,18 +35,19 @@ eval env form@(List (Atom "cond" : clauses)) =
                                              expr,
                                              List (Atom "cond" : tail clauses)]
     _ -> throwError $ BadSpecialForm "ill-formed cond expression: " form
-eval env form@(List (Atom "case" : key : clauses)) =
-  if null clauses
-  then throwError $ BadSpecialForm "no true clause in case expression: " form
-  else case head clauses of
-    List (Atom "else" : exprs) -> mapM (eval env) exprs >>= return . last
-    List (List datums : exprs) -> do
-      result <- eval env key
-      equality <- mapM (\x -> liftThrows $ eqv [result, x]) datums
-      if Boolean True `elem` equality
-        then mapM (eval env) exprs >>= return . last
-        else eval env $ List (Atom "case" : key : tail clauses)
-    _ -> throwError $ BadSpecialForm "ill-formed case expression: " form
+-- TODO: rewrite case without using LispVal deriving Eq
+-- eval env form@(List (Atom "case" : key : clauses)) =
+--   if null clauses
+--   then throwError $ BadSpecialForm "no true clause in case expression: " form
+--   else case head clauses of
+--     List (Atom "else" : exprs) -> mapM (eval env) exprs >>= return . last
+--     List (List datums : exprs) -> do
+--       result <- eval env key
+--       equality <- mapM (\x -> liftThrows $ eqv [result, x]) datums
+--       if Boolean True `elem` equality
+--         then mapM (eval env) exprs >>= return . last
+--         else eval env $ List (Atom "case" : key : tail clauses)
+--     _ -> throwError $ BadSpecialForm "ill-formed case expression: " form
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List [Atom "define", Atom var, form]) = eval env form >>= defineVar env var
 eval env (List (Atom f : args))     = mapM (eval env) args >>= liftThrows . apply f

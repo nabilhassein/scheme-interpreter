@@ -3,8 +3,6 @@
 module Primitives where
 
 import LispVal
-import LispError
-import Text.ParserCombinators.Parsec
 import Control.Monad.Error (throwError, catchError)
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
