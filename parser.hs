@@ -8,6 +8,7 @@ import Data.Ratio
 import Data.Complex
 import Numeric
 
+-- TODO: add semicolon as comment
 
 parseBoolean :: Parser LispVal
 parseBoolean = do
