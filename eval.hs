@@ -180,8 +180,11 @@ untilM_ pred prompt action = do
     then return ()
     else action result >> untilM_ pred prompt action
 
-runExpr :: String -> IO ()
-runExpr expr = primitiveBindings >>= flip evalAndPrint expr
+runExprs :: [String] -> IO ()
+runExprs args = do
+  env <- primitiveBindings >>= flip bindVars [("args", List $ map String $ drop 1 args)]
+  hPutStrLn stderr =<<
+    (runIOThrows . fmap show $ eval env (List [Atom "load", String (head args)]))
 
 repl :: IO ()
 repl = primitiveBindings >>= untilM_ (`elem` ["quit", "exit"]) (readPrompt "scheme> ") . evalAndPrint
@@ -201,10 +204,6 @@ readExprList = readOrThrow (endBy parseExpr spaces)
 main :: IO ()
 main = do
   args <- getArgs
-  case length args of
-    0 -> repl
-    1 -> runExpr $ head args
-    _ -> do
-      progName <- getProgName
-      putStrLn $ "Usage: " ++ progName ++ " [expr]"
-
+  if null args
+    then repl
+    else runExprs args
