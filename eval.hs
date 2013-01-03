@@ -1,14 +1,60 @@
+{-# Language ExistentialQuantification #-}
+
 module Main where
 
 import LispVal
-import Primitives
 import Parser
+import Primitives
 import Text.ParserCombinators.Parsec
 import Control.Monad (forM)
-import Control.Monad.Error (throwError, liftIO)
+import Control.Monad.Error (throwError, catchError, liftIO)
 import System.Environment (getArgs, getProgName)
 import System.IO
 import Data.IORef (newIORef)
+
+
+ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
+ioPrimitives = [ ("apply", applyProc)
+               , ("open-input-file"  , makePort ReadMode)
+               , ("open-output-file" , makePort WriteMode)
+               , ("close-input-port" , closePort)
+               , ("close-output-port", closePort)
+               , ("read"             , readProc)
+               , ("write"            , writeProc)
+               , ("read-contents"    , readContents)
+               , ("read-all"         , readAll)
+               ]
+
+applyProc :: [LispVal] -> IOThrowsError LispVal
+applyProc [f, List args] = apply f args
+applyProc (f : args)     = apply f args
+
+makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
+makePort mode [String filename] = fmap Port . liftIO $ openFile filename mode
+
+closePort :: [LispVal] -> IOThrowsError LispVal
+closePort [Port port] = (liftIO $ hClose port) >> (return $ Boolean True)
+closePort _           = return $ Boolean False
+
+readProc :: [LispVal] -> IOThrowsError LispVal
+readProc []          = readProc [Port stdin]
+readProc [Port port] = (liftIO $ hGetLine port) >>= liftThrows . readExpr
+
+writeProc :: [LispVal] -> IOThrowsError LispVal
+writeProc [obj]            = writeProc [obj, Port stdout]
+writeProc [obj, Port port] = liftIO $ hPrint port obj >> (return $ Boolean True)
+
+readContents :: [LispVal] -> IOThrowsError LispVal
+readContents [String filename] = fmap String . liftIO $ readFile filename
+
+readAll :: [LispVal] -> IOThrowsError LispVal
+readAll [String filename] = fmap List $ load filename
+
+load :: String -> IOThrowsError [LispVal]
+load filename = (liftIO $ readFile filename) >>= liftThrows . readExprList
+
+
+
 
 makeFunc :: Maybe String -> EnvRef -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env

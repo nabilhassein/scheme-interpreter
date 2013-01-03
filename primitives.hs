@@ -127,8 +127,9 @@ cons [x, y]               = return $ DottedList [x] y
 cons badArgList           = throwError $ NumArgs 2 badArgList
 
 
---TODO: figure out equality between numerical types
---TODO: make eq, eqv, equal truly schemish instead of as in tutorial
+-- TODO: figure out equality between numerical types
+-- TODO: make eq, eqv, equal truly schemish instead of as in tutorial
+-- TODO: update with new LispVal constructors
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(List arg1), (List arg2)] = return . Boolean $ (length arg1 == length arg2)
                                  && (all eqvPair $ zip arg1 arg2)
@@ -160,54 +161,12 @@ unpackEquals x y (AnyUnpacker unpack) = do
 
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
-  primitiveEquals <- fmap or $ mapM (unpackEquals arg1 arg2)[AnyUnpacker unpackNum,
+  primitiveEquals <- fmap or $ mapM (unpackEquals arg1 arg2) [AnyUnpacker unpackNum,
                                                               AnyUnpacker unpackStr,
                                                               AnyUnpacker unpackBool]
   eqvEquals <- eqv [arg1, arg2]
   return . Boolean $ primitiveEquals || let (Boolean x) = eqvEquals in x
 equal badArgList = throwError $ NumArgs 2 badArgList
 
--- TODO: add string comparison
-
-
-
-ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
-ioPrimitives = [ ("apply", applyProc)
-               , ("open-input-file"  , makePort ReadMode)
-               , ("open-output-file" , makePort WriteMode)
-               , ("close-input-port" , closePort)
-               , ("close-output-port", closePort)
-               , ("read"             , readProc)
-               , ("write"            , writeProc)
-               , ("read-contents"    , readContents)
-               , ("read-all"         , readAll)
-               ]
-
-applyProc :: [LispVal] -> IOThrowsError LispVal
-applyProc [f, List args] = apply f args
-applyProc (f : args)     = apply f args
-
-makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
-makePort mode [String filename] = fmap Port . liftIO $ openFile filename mode
-
-closePort :: [LispVal] -> IOThrowsError LispVal
-closePort [Port port] = liftIO $ hClose port >> return $ Boolean True
-closePort _           = return $ Boolean False
-
-readProc :: [LispVal] -> IOThrowsError LispVal
-readProc [] = readProc [Port stdin]
-readProc [Port port] = (liftIO $ hGetLine port) >>= liftThrows . readExpr
-
-writeProc :: [LispVal] -> IOThrowsError LispVal
-writeProc [obj] = writeProc [obj, Port stdout]
-writeProc [obj, Port port] = (liftIO $ hPrint port obj) >> return $ Boolean True
-
-readContents :: [LispVal] -> IOThrowsError LispVal
-readContents [String filename] = fmap String . liftIO $ readFile filename
-
-readAll :: [LispVal] -> IOThrowsError LispVal
-readAll [String filename] = fmap List $ load filename
-
-load :: String -> IOThrowsError LispVal
-load filename = (liftIO $ readFile filename) >>= liftThrows . readExprList
+-- TODO: add string comparison functions
 
