@@ -129,6 +129,9 @@ eval env (List (Atom "lambda" : DottedList params varargs : body)) =
 eval env (List (Atom "lambda" : varargs@(Atom _) : body)) =
   makeVarargs varargs env [] body
 
+eval env (List [Atom "load", String filename]) =
+  load filename >>= fmap last . mapM (eval env)
+
 eval env (List (f : args)) = do
   func <- eval env f
   argVals <- mapM (eval env) args
@@ -150,7 +153,7 @@ apply (Func params varargs body closure) args =
         bindVarArgs arg env = case arg of
           Nothing       -> return env
           Just argName  -> liftIO $ bindVars env [(argName, List remainingArgs)]
-apply x _ = throwError $ NotFunction "not a function: " (show x)
+apply x _ = throwError $ NotFunction "not a function" (show x)
 
 
 nullEnv :: IO EnvRef
