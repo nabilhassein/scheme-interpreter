@@ -2,8 +2,8 @@
 
 module Primitives where
 
-import Parser
-import Error
+import LispVal
+import LispError
 import Text.ParserCombinators.Parsec
 import Control.Monad.Error (throwError, catchError)
 

@@ -1,6 +1,6 @@
-module Error where
+module LispError where
 
-import Parser
+import LispVal
 import Text.ParserCombinators.Parsec
 import Control.Monad.Error
 

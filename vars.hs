@@ -1,7 +1,7 @@
 module Vars where
 
-import Parser
-import Error
+import LispVal
+import LispError
 import Control.Monad.Error
 import Data.IORef
 

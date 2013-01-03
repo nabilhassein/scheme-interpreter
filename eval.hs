@@ -1,9 +1,10 @@
 module Main where
 
-import Parser
-import Error
+import LispVal
+import LispError
 import Primitives
 import Vars
+import Parser
 import Text.ParserCombinators.Parsec
 import Control.Monad (forM)
 import Control.Monad.Error (throwError)
