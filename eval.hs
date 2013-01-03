@@ -10,17 +10,17 @@ import System.Environment (getArgs, getProgName)
 import System.IO
 
 
-makeFunc :: Maybe String -> Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
+makeFunc :: Maybe String -> EnvRef -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeFunc varargs env params body = return $ Func (map showVal params) varargs body env
 
-makeNormalFunc :: Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
+makeNormalFunc :: EnvRef -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeNormalFunc = makeFunc Nothing
 
-makeVarargs :: LispVal -> Env -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
+makeVarargs :: LispVal -> EnvRef -> [LispVal] -> [LispVal] -> IOThrowsError LispVal
 makeVarargs = makeFunc . Just . showVal
 
 
-eval :: Env -> LispVal -> IOThrowsError LispVal
+eval :: EnvRef -> LispVal -> IOThrowsError LispVal
 eval env val@(Number _)             = return val
 eval env val@(Complex _)            = return val
 eval env val@(Real _)               = return val
@@ -28,7 +28,7 @@ eval env val@(Ratio _)              = return val
 eval env val@(String _)             = return val
 eval env val@(Character _)          = return val
 eval env val@(Boolean _)            = return val
-eval env (Atom id)                  = getEnv env id
+eval env (Atom id)                  = getVar env id
 eval env (List [Atom "quote", val]) = return val
 
 eval env (List [Atom "if", predicate, consequent, alternative]) = do
@@ -105,17 +105,17 @@ apply (Func params varargs body closure) args =
 apply x _ = throwError $ NotFunction "not a function: " (show x)
 
 
-primitiveBindings :: IO Env
+primitiveBindings :: IO EnvRef
 primitiveBindings = nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
   where makePrimitiveFunc (var, f) = (var, PrimitiveFunc f)
 
 readPrompt :: String -> IO String
 readPrompt prompt = putStr prompt >> hFlush stdout >> getLine
 
-evalString :: Env -> String -> IO String
+evalString :: EnvRef -> String -> IO String
 evalString env expr = runIOThrows . fmap show $ (liftThrows $ readExpr expr) >>= eval env
 
-evalAndPrint :: Env -> String -> IO ()
+evalAndPrint :: EnvRef -> String -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn
 
 untilM_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()

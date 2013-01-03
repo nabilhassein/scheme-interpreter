@@ -2,7 +2,6 @@ module Parser where
 
 import LispVal
 import Text.ParserCombinators.Parsec
-import System.Environment (getArgs)
 import Data.Maybe (fromJust)
 import Data.Char (digitToInt)
 import Data.Ratio
