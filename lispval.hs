@@ -134,7 +134,11 @@ defineVar envRef var value = do
 
 bindVars :: EnvRef -> [(String, LispVal)] -> IO EnvRef
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
-  where extendEnv bindings env = fmap (++ env) (mapM addBinding bindings)
-        addBinding (var, value) = do ref <- newIORef value
-                                     return (var, ref)
+
+extendEnv :: [(String, LispVal)] -> [(String, IORef LispVal)] -> IO [(String, IORef LispVal)]
+extendEnv bindings env = fmap (++ env) (mapM addBinding bindings)
+
+addBinding :: (String, LispVal) -> IO (String, IORef LispVal)
+addBinding (var, value) = do ref <- newIORef value
+                             return (var, ref)
 
