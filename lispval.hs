@@ -38,6 +38,13 @@ showVal (Character c)     = "'" ++ [c] ++ "'"
 showVal (Boolean True)    = "#t"
 showVal (Boolean False)   = "#f"
 showVal (Atom a)          = a
+showVal (PrimitiveFunc _) = "<primitive>"
+showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
+            "(lambda (" ++ unwords (map show args) ++
+            case varargs of
+              Nothing -> ""
+              Just arg -> " . " ++ arg
+            ++ ") ...)"
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
