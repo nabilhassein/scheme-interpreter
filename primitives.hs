@@ -3,7 +3,8 @@
 module Primitives where
 
 import LispVal
-import Control.Monad.Error (throwError, catchError)
+import System.IO
+import Control.Monad.Error (throwError, catchError, liftIO)
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [ ("+"             , numericBinOp (+))
@@ -167,3 +168,46 @@ equal [arg1, arg2] = do
 equal badArgList = throwError $ NumArgs 2 badArgList
 
 -- TODO: add string comparison
+
+
+
+ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
+ioPrimitives = [ ("apply", applyProc)
+               , ("open-input-file"  , makePort ReadMode)
+               , ("open-output-file" , makePort WriteMode)
+               , ("close-input-port" , closePort)
+               , ("close-output-port", closePort)
+               , ("read"             , readProc)
+               , ("write"            , writeProc)
+               , ("read-contents"    , readContents)
+               , ("read-all"         , readAll)
+               ]
+
+applyProc :: [LispVal] -> IOThrowsError LispVal
+applyProc [f, List args] = apply f args
+applyProc (f : args)     = apply f args
+
+makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
+makePort mode [String filename] = fmap Port . liftIO $ openFile filename mode
+
+closePort :: [LispVal] -> IOThrowsError LispVal
+closePort [Port port] = liftIO $ hClose port >> return $ Boolean True
+closePort _           = return $ Boolean False
+
+readProc :: [LispVal] -> IOThrowsError LispVal
+readProc [] = readProc [Port stdin]
+readProc [Port port] = (liftIO $ hGetLine port) >>= liftThrows . readExpr
+
+writeProc :: [LispVal] -> IOThrowsError LispVal
+writeProc [obj] = writeProc [obj, Port stdout]
+writeProc [obj, Port port] = (liftIO $ hPrint port obj) >> return $ Boolean True
+
+readContents :: [LispVal] -> IOThrowsError LispVal
+readContents [String filename] = fmap String . liftIO $ readFile filename
+
+readAll :: [LispVal] -> IOThrowsError LispVal
+readAll [String filename] = fmap List $ load filename
+
+load :: String -> IOThrowsError LispVal
+load filename = (liftIO $ readFile filename) >>= liftThrows . readExprList
+

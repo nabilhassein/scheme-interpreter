@@ -111,8 +111,9 @@ nullEnv :: IO EnvRef
 nullEnv = newIORef []
 
 primitiveBindings :: IO EnvRef
-primitiveBindings = nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
-  where makePrimitiveFunc (var, f) = (var, PrimitiveFunc f)
+primitiveBindings = nullEnv >>= (flip bindVars $ map (makeFunc PrimitiveFunc) primitives
+                                              ++ map (makeFunc IOFunc) ioPrimitives)
+  where makeFunc constructor (var, f) = (var, constructor f)
 
 readPrompt :: String -> IO String
 readPrompt prompt = putStr prompt >> hFlush stdout >> getLine
