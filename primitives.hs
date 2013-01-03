@@ -166,3 +166,4 @@ equal [arg1, arg2] = do
   return . Boolean $ primitiveEquals || let (Boolean x) = eqvEquals in x
 equal badArgList = throwError $ NumArgs 2 badArgList
 
+-- TODO: add string comparison

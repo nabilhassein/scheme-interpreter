@@ -21,6 +21,7 @@ makeVarargs = makeFunc . Just . showVal
 
 
 eval :: EnvRef -> LispVal -> IOThrowsError LispVal
+-- TODO: quasiquote, unquote, vector
 eval env val@(Number _)             = return val
 eval env val@(Complex _)            = return val
 eval env val@(Real _)               = return val
